@@ -17,6 +17,8 @@ namespace MinecraftGuessr.Models
 
         public int TotalScore { get; set; } = 0;
 
+        public bool IsAdmin { get; set; } = false;
+
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }

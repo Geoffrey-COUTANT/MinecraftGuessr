@@ -18,16 +18,18 @@
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  image-rendering: pixelated; /* Essential for pixel art textures! */
+  image-rendering: pixelated;
+  /* Essential for pixel art textures! */
 }
 
 body {
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background-image: 
+  background-image:
     radial-gradient(circle, rgba(0, 0, 0, 0.5) 0%, rgba(0, 0, 0, 0.9) 100%),
-    url('https://images.unsplash.com/photo-1607988795691-3d0147b43231?q=80&w=1920&auto=format&fit=crop'); /* Minecraft block style backdrop */
+    url('https://images.unsplash.com/photo-1607988795691-3d0147b43231?q=80&w=1920&auto=format&fit=crop');
+  /* Minecraft block style backdrop */
   background-size: cover;
   background-position: center;
   background-attachment: fixed;
@@ -45,15 +47,18 @@ body {
 ::-webkit-scrollbar {
   width: 12px;
 }
+
 ::-webkit-scrollbar-track {
   background: #2c2c2c;
   border: 3px solid #1e1e1e;
 }
+
 ::-webkit-scrollbar-thumb {
   background: #5a5a5a;
   border: 3px solid #2c2c2c;
   box-shadow: inset 1px 1px 0px #8a8a8a, inset -1px -1px 0px #3a3a3a;
 }
+
 ::-webkit-scrollbar-thumb:hover {
   background: #7a7a7a;
 }
@@ -206,6 +211,7 @@ body {
     transform: translateY(30px);
     opacity: 0;
   }
+
   to {
     transform: translateY(0);
     opacity: 1;
@@ -217,6 +223,7 @@ body {
     transform: scale(0.9);
     opacity: 0;
   }
+
   to {
     transform: scale(1);
     opacity: 1;
@@ -228,9 +235,11 @@ body {
     transform: scale(0.8);
     opacity: 0;
   }
+
   50% {
     transform: scale(1.1);
   }
+
   100% {
     transform: scale(1);
     opacity: 1;
@@ -238,9 +247,18 @@ body {
 }
 
 @keyframes celebrate {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.2) rotate(5deg); filter: brightness(1.2); }
-  100% { transform: scale(1); }
+  0% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.2) rotate(5deg);
+    filter: brightness(1.2);
+  }
+
+  100% {
+    transform: scale(1);
+  }
 }
 
 .celebrate-animation {
@@ -262,6 +280,16 @@ body {
   display: flex;
   align-items: center;
   gap: 12px;
+  transition: transform 0.15s ease, opacity 0.15s ease;
+}
+
+.clickable-logo:hover {
+  transform: scale(1.03);
+  opacity: 0.95;
+}
+
+.clickable-logo:active {
+  transform: scale(0.98);
 }
 
 .logo-text {
@@ -285,7 +313,56 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+  transition: all 0.15s ease;
 }
+
+.header-score-badge:hover {
+  background: #4a4a4a;
+  border-color: #ffaa00;
+  box-shadow: inset 1px 1px 0px #aaa, inset -1px -1px 0px #111, 0 0 10px rgba(255, 170, 0, 0.4);
+}
+
+.header-score-badge:active {
+  background: #2a2a2a;
+  box-shadow: inset -1px -1px 0px #888, inset 1px 1px 0px #111;
+  transform: translateY(1px);
+}
+
+/* Homepage Dashboard Styles */
+.home-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+@media (max-width: 768px) {
+  .home-dashboard-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+.dashboard-card {
+  padding: 25px !important;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.dashboard-card:hover {
+  transform: translateY(-4px);
+  border-color: #ffaa00 !important;
+  box-shadow: inset 3px 3px 0px #2c2c2c, inset -3px -3px 0px #0c0c0c, 0 8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.mini-leaderboard {
+  background: rgba(0, 0, 0, 0.25);
+  border: 2px solid #3c3c3c;
+  padding: 15px;
+  border-radius: 4px;
+}
+
+.mini-leaderboard table tr:last-child {
+  border-bottom: none !important;
+}
+
 
 /* Game Interface Styles */
 .game-container {
@@ -336,13 +413,11 @@ body {
 
 .progress-bar-fill {
   height: 100%;
-  background: repeating-linear-gradient(
-    45deg,
-    #55ff55,
-    #55ff55 10px,
-    #33cc33 10px,
-    #33cc33 20px
-  );
+  background: repeating-linear-gradient(45deg,
+      #55ff55,
+      #55ff55 10px,
+      #33cc33 10px,
+      #33cc33 20px);
   box-shadow: inset 0px 3px 0px rgba(255, 255, 255, 0.4);
   transition: width 0.3s ease;
 }
@@ -367,7 +442,7 @@ body {
   gap: 20px;
   background: #c6c6c6;
   border: 4px solid #3c3c3c;
-  box-shadow: inset 4px 4px 0px #fff, inset -4px -4px 0px #555, 10px 10px 20px rgba(0,0,0,0.5);
+  box-shadow: inset 4px 4px 0px #fff, inset -4px -4px 0px #555, 10px 10px 20px rgba(0, 0, 0, 0.5);
   padding: 30px;
   border-radius: 2px;
   position: relative;
@@ -410,9 +485,11 @@ body {
 }
 
 .slot-item img {
-  max-width: 100%;
-  max-height: 100%;
-  object-fit: contain;
+  width: 85% !important;
+  height: 85% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated !important;
+  image-rendering: crisp-edges !important;
   transition: transform 0.1s ease;
 }
 
@@ -686,4 +763,347 @@ body {
 .instructions-panel ul {
   padding-left: 20px;
   margin-top: 5px;
+}
+
+/* Slabs visual representation */
+.slot-item img.slab-texture {
+  width: 85% !important;
+  height: 42.5% !important;
+  max-height: 42.5% !important;
+}
+
+.history-item img.slab-texture {
+  width: 40px !important;
+  height: 20px !important;
+}
+
+img.slab-texture {
+  object-fit: cover !important;
+  object-position: bottom !important;
+}
+
+.slot-item:hover img.slab-texture {
+  transform: scale(1.1) !important;
+}
+
+/* Stairs visual representation */
+.slot-item img.stairs-texture {
+  width: 85% !important;
+  height: 85% !important;
+}
+
+.history-item img.stairs-texture {
+  width: 40px !important;
+  height: 40px !important;
+}
+
+img.stairs-texture {
+  clip-path: polygon(0% 0%, 50% 0%, 50% 50%, 100% 50%, 100% 100%, 0% 100%) !important;
+}
+
+.slot-item:hover img.stairs-texture {
+  transform: scale(1.1) !important;
+}
+
+/* Modal overlay covering the entire site */
+.mc-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+.mc-modal-content {
+  width: 90%;
+  max-width: 700px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  padding: 25px;
+  animation: popIn 0.3s cubic-bezier(0.18, 0.89, 0.32, 1.28);
+}
+
+.mc-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-bottom: 2px solid #5a5a5a;
+  padding-bottom: 12px;
+  margin-bottom: 15px;
+}
+
+.mc-modal-close {
+  background: transparent;
+  border: none;
+  color: #aaa;
+  font-size: 32px;
+  cursor: pointer;
+  line-height: 1;
+  transition: color 0.15s ease;
+}
+
+.mc-modal-close:hover {
+  color: #ff5555;
+}
+
+.mc-modal-body {
+  overflow-y: auto;
+  flex-grow: 1;
+  padding-right: 5px;
+}
+
+/* Grid of possible craft items */
+.possible-crafts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.possible-craft-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(30, 30, 30, 0.5);
+  border: 2px solid #5a5a5a;
+  padding: 10px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.possible-craft-card.crafted {
+  background: rgba(85, 255, 85, 0.05);
+  border-color: #55ff55;
+}
+
+.possible-craft-icon {
+  width: 48px;
+  height: 48px;
+  background: #8b8b8b;
+  border: 3px solid #373737;
+  box-shadow: inset 3px 3px 0px #000, inset -2px -2px 0px #a2a2a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.possible-craft-icon img {
+  width: 85% !important;
+  height: 85% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated !important;
+  image-rendering: crisp-edges !important;
+}
+
+.possible-craft-details {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.possible-craft-name {
+  font-size: 16px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.possible-craft-status {
+  font-size: 14px;
+}
+
+/* Homepage custom styling */
+.home-container {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* History Dock slot inside profile page */
+.history-dock-slot {
+  width: 40px;
+  height: 40px;
+  background: #8b8b8b;
+  border: 2px solid #373737;
+  box-shadow: inset 2px 2px 0px #000, inset -1px -1px 0px #a2a2a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px;
+}
+
+.history-dock-slot img {
+  width: 85% !important;
+  height: 85% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated !important;
+}
+
+/* Past challenge crafts grid inside profile history */
+.history-crafts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+}
+
+.history-craft-card {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(30, 30, 30, 0.5);
+  border: 2px solid #5a5a5a;
+  padding: 10px;
+  transition: border-color 0.15s, background-color 0.15s;
+}
+
+.history-craft-card.success {
+  background: rgba(85, 255, 85, 0.05);
+  border-color: #55ff55;
+}
+
+.history-craft-card.failed {
+  background: rgba(255, 85, 85, 0.05);
+  border-color: #ff5555;
+}
+
+.history-craft-icon {
+  width: 48px;
+  height: 48px;
+  background: #8b8b8b;
+  border: 3px solid #373737;
+  box-shadow: inset 3px 3px 0px #000, inset -2px -2px 0px #a2a2a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+}
+
+.history-craft-icon img {
+  width: 85% !important;
+  height: 85% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated !important;
+  image-rendering: crisp-edges !important;
+}
+
+.history-craft-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.history-craft-name {
+  font-size: 16px;
+  color: #fff;
+  font-weight: bold;
+}
+
+.history-craft-status {
+  font-size: 14px;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes popIn {
+  from { transform: scale(0.85); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+.animate-bounce {
+  animation: bounce 2s infinite;
+}
+
+/* Gameplay Layout Fixes for App.tsx classes */
+.crafting-table {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  background: #c6c6c6;
+  border: 4px solid #3c3c3c;
+  box-shadow: inset 4px 4px 0px #fff, inset -4px -4px 0px #555, 10px 10px 20px rgba(0, 0, 0, 0.5);
+  padding: 30px;
+  border-radius: 2px;
+  position: relative;
+}
+
+.crafting-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
+}
+
+.slot {
+  width: 72px;
+  height: 72px;
+  background-color: #8b8b8b;
+  border: 4px solid #373737;
+  box-shadow: inset 4px 4px 0px #000000, inset -2px -2px 0px #a2a2a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  user-select: none;
+  transition: background-color 0.1s ease;
+}
+
+.slot:hover {
+  background-color: #9c9c9c;
+}
+
+.slot.slot-output {
+  width: 90px;
+  height: 90px;
+}
+
+.ingredients-dock {
+  display: flex;
+  gap: 15px;
+  justify-content: center;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+
+.dock-slot {
+  width: 68px;
+  height: 68px;
+  background-color: #8b8b8b;
+  border: 3px solid #373737;
+  box-shadow: inset 3px 3px 0px #000000, inset -2px -2px 0px #a2a2a2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.dock-slot:hover {
+  background-color: #9c9c9c;
+  transform: translateY(-2px);
+}
+
+.dock-slot.selected {
+  border-color: #55ff55;
+  box-shadow: inset 3px 3px 0px #000000, inset -2px -2px 0px #a2a2a2, 0 0 10px #55ff55;
+}
+
+.dock-slot img {
+  width: 85% !important;
+  height: 85% !important;
+  object-fit: contain !important;
+  image-rendering: pixelated !important;
+  image-rendering: crisp-edges !important;
 }

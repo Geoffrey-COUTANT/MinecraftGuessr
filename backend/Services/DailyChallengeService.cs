@@ -43,12 +43,13 @@ namespace MinecraftGuessr.Services
 
             // Try generating ingredients until we have at least 3 possible crafts to ensure a fun game
             int attempts = 0;
-            while (attempts < 150)
+            while (attempts < 300) // increased attempts to find a set where all 4 are useful
             {
                 attempts++;
                 chosen = baseIngredients.OrderBy(_ => rand.Next()).Take(4).ToList();
 
                 var craftableSet = new HashSet<string>();
+                var craftableRecipes = new List<Recipe>();
                 var recipes = _recipeService.GetAllRecipes();
 
                 foreach (var recipe in recipes)
@@ -56,34 +57,40 @@ namespace MinecraftGuessr.Services
                     if (_recipeService.IsRecipeCraftable(recipe, chosen))
                     {
                         craftableSet.Add(recipe.Result.Id);
+                        craftableRecipes.Add(recipe);
                     }
                 }
 
-                // If possible crafts is in a good sweet spot, pick it
-                if (craftableSet.Count >= 2 && craftableSet.Count <= 25)
+                // If possible crafts is in a good sweet spot AND every ingredient is useful, pick it
+                if (craftableSet.Count >= 2 && craftableSet.Count <= 25 && AreAllIngredientsUsed(chosen, craftableRecipes))
                 {
                     craftableItems = craftableSet.ToList();
                     break;
                 }
             }
 
-            // Fallback if we couldn't find a set within 150 attempts
+            // Fallback if we couldn't find a set within attempts
             if (craftableItems.Count == 0)
             {
                 int fallbackAttempts = 0;
-                while (fallbackAttempts < 100)
+                while (fallbackAttempts < 200)
                 {
                     fallbackAttempts++;
                     chosen = baseIngredients.OrderBy(_ => rand.Next()).Take(4).ToList();
+                    
                     var craftableSet = new HashSet<string>();
+                    var craftableRecipes = new List<Recipe>();
+                    
                     foreach (var recipe in _recipeService.GetAllRecipes())
                     {
                         if (_recipeService.IsRecipeCraftable(recipe, chosen))
                         {
                             craftableSet.Add(recipe.Result.Id);
+                            craftableRecipes.Add(recipe);
                         }
                     }
-                    if (craftableSet.Count > 0)
+
+                    if (craftableSet.Count > 0 && AreAllIngredientsUsed(chosen, craftableRecipes))
                     {
                         craftableItems = craftableSet.ToList();
                         break;
@@ -121,6 +128,45 @@ namespace MinecraftGuessr.Services
             await _dbContext.SaveChangesAsync();
 
             return challenge;
+        }
+
+        private static bool IsIngredientUsedInRecipe(Recipe recipe, string ingredientId)
+        {
+            if (recipe.Type == "minecraft:crafting_shaped" && recipe.Key != null)
+            {
+                foreach (var val in recipe.Key.Values)
+                {
+                    if (TagResolver.MatchesTag(ingredientId, val))
+                        return true;
+                }
+            }
+            else if (recipe.Type == "minecraft:crafting_shapeless" && recipe.Ingredients != null)
+            {
+                foreach (var val in recipe.Ingredients)
+                {
+                    if (TagResolver.MatchesTag(ingredientId, val))
+                        return true;
+                }
+            }
+            return false;
+        }
+
+        private static bool AreAllIngredientsUsed(List<string> chosen, List<Recipe> craftableRecipes)
+        {
+            foreach (var ingredient in chosen)
+            {
+                bool isUsed = false;
+                foreach (var recipe in craftableRecipes)
+                {
+                    if (IsIngredientUsedInRecipe(recipe, ingredient))
+                    {
+                        isUsed = true;
+                        break;
+                    }
+                }
+                if (!isUsed) return false;
+            }
+            return true;
         }
     }
 }

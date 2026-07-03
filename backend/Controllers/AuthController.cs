@@ -8,6 +8,7 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
+using Microsoft.AspNetCore.Authorization;
 using MinecraftGuessr.Data;
 using MinecraftGuessr.Models;
 
@@ -74,7 +75,8 @@ namespace MinecraftGuessr.Controllers
             {
                 Token = token,
                 Username = user.Username,
-                TotalScore = user.TotalScore
+                TotalScore = user.TotalScore,
+                IsAdmin = user.IsAdmin
             });
         }
 
@@ -94,8 +96,50 @@ namespace MinecraftGuessr.Controllers
             {
                 Token = token,
                 Username = user.Username,
-                TotalScore = user.TotalScore
+                TotalScore = user.TotalScore,
+                IsAdmin = user.IsAdmin
             });
+        }
+
+        [Authorize]
+        [HttpPost("change-password")]
+        public async Task<IActionResult> ChangePassword([FromBody] ChangePasswordDto dto)
+        {
+            if (dto == null) return BadRequest("Invalid request.");
+
+            // Get user id from claims
+            var userIdClaim = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+            if (string.IsNullOrEmpty(userIdClaim) || !int.TryParse(userIdClaim, out var userId))
+            {
+                return Unauthorized();
+            }
+
+            var user = await _context.Users.FindAsync(userId);
+            if (user == null) return NotFound("User not found.");
+
+            // Verify current password
+            if (!BCrypt.Net.BCrypt.Verify(dto.CurrentPassword, user.PasswordHash))
+            {
+                return BadRequest(new { Message = "Incorrect current password." });
+            }
+
+            // Validate new password rules
+            if (dto.NewPassword.Length < 8)
+                return BadRequest(new { Message = "New password must be at least 8 characters long." });
+
+            bool hasLetter = Regex.IsMatch(dto.NewPassword, @"[a-zA-Z]");
+            bool hasDigit = Regex.IsMatch(dto.NewPassword, @"[0-9]");
+            if (!hasLetter || !hasDigit)
+            {
+                return BadRequest(new { Message = "New password must contain at least one letter and one number." });
+            }
+
+            // Hash new password and save
+            user.PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.NewPassword);
+            _context.Entry(user).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+
+            return Ok(new { Message = "Password changed successfully." });
         }
 
         private string GenerateJwtToken(User user)
@@ -138,5 +182,12 @@ namespace MinecraftGuessr.Controllers
         public string Token { get; set; } = string.Empty;
         public string Username { get; set; } = string.Empty;
         public int TotalScore { get; set; }
+        public bool IsAdmin { get; set; }
+    }
+
+    public class ChangePasswordDto
+    {
+        public string CurrentPassword { get; set; } = string.Empty;
+        public string NewPassword { get; set; } = string.Empty;
     }
 }

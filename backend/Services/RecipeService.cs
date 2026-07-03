@@ -50,23 +50,10 @@ namespace MinecraftGuessr.Services
 
         public string GetTextureUrl(string itemId)
         {
-            var name = itemId.Replace("minecraft:", "").ToLowerInvariant();
+            var name = itemId.Replace("minecraft:", "").ToUpperInvariant();
 
-            // Special cases
-            if (name == "compass") name = "compass_00";
-            else if (name == "clock") name = "clock_00";
-            else if (name == "recovery_compass") name = "recovery_compass_00";
-
-            if (_texturesMap.TryGetValue(name, out var folderType))
-            {
-                return $"{_cdnBaseUrl}/texture-{folderType}/{name}.png";
-            }
-
-            // Fallbacks based on suffixes
-            if (name.EndsWith("_planks") || name.EndsWith("_wood") || name.EndsWith("_log"))
-                return $"{_cdnBaseUrl}/texture-block/oak_planks.png";
-
-            return $"{_cdnBaseUrl}/texture-item/barrier.png";
+            // Direct mapping of all items to Owen1212055/mc-assets pre-rendered inventory renders (in uppercase)
+            return $"https://raw.githubusercontent.com/Owen1212055/mc-assets/main/item-assets/{name}.png";
         }
 
         private void LoadTextures(string contentRoot)

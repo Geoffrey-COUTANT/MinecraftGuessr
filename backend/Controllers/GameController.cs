@@ -73,13 +73,18 @@ namespace MinecraftGuessr.Controllers
                     CraftedAt = c.CreatedAt
                 }).OrderByDescending(h => h.CraftedAt).ToList();
 
+                // Format possible crafts list
+                var possibleCraftsIds = JsonSerializer.Deserialize<List<string>>(challenge.PossibleCraftsJson) ?? new List<string>();
+                var possibleCrafts = possibleCraftsIds.Select(id => CreateIngredientDto(id)).ToList();
+
                 var response = new DailyGameStatusDto
                 {
                     Date = challenge.Date,
                     Ingredients = ingredients,
                     TotalPossibleCrafts = challenge.PossibleCraftsCount,
                     CraftedCount = history.Count,
-                    History = history
+                    History = history,
+                    PossibleCrafts = possibleCrafts
                 };
 
                 return Ok(response);
@@ -208,6 +213,70 @@ namespace MinecraftGuessr.Controllers
             }
         }
 
+        [HttpGet("history")]
+        public async Task<IActionResult> GetGameHistory()
+        {
+            try
+            {
+                int userId = GetCurrentUserId();
+                var today = DateTime.UtcNow.Date;
+
+                // Load all past challenges (strictly before today)
+                var pastChallenges = await _context.DailyChallenges
+                    .Where(d => d.Date < today)
+                    .OrderByDescending(d => d.Date)
+                    .ToListAsync();
+
+                var historyList = new List<PastChallengeDto>();
+
+                foreach (var challenge in pastChallenges)
+                {
+                    // Load user's crafts for that day
+                    var userCrafts = await _context.UserDailyCrafts
+                        .Where(c => c.UserId == userId && c.Date == challenge.Date)
+                        .Select(c => c.CraftedItemId)
+                        .ToListAsync();
+
+                    var possibleCraftsIds = JsonSerializer.Deserialize<List<string>>(challenge.PossibleCraftsJson) ?? new List<string>();
+
+                    var crafts = possibleCraftsIds.Select(id => new PastCraftDto
+                    {
+                        Id = id,
+                        Name = FormatItemName(id),
+                        TextureUrl = _recipeService.GetTextureUrl(id),
+                        Succeeded = userCrafts.Contains(id)
+                    }).ToList();
+
+                    var ingredients = new List<IngredientDto>
+                    {
+                        CreateIngredientDto(challenge.Ingredient1),
+                        CreateIngredientDto(challenge.Ingredient2),
+                        CreateIngredientDto(challenge.Ingredient3),
+                        CreateIngredientDto(challenge.Ingredient4)
+                    };
+
+                    historyList.Add(new PastChallengeDto
+                    {
+                        Date = challenge.Date,
+                        Ingredients = ingredients,
+                        TotalPossibleCrafts = challenge.PossibleCraftsCount,
+                        CraftedCount = userCrafts.Count,
+                        Crafts = crafts
+                    });
+                }
+
+                return Ok(historyList);
+            }
+            catch (UnauthorizedAccessException)
+            {
+                return Unauthorized();
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new { Message = "Error loading history.", Details = ex.Message });
+            }
+        }
+
         private IngredientDto CreateIngredientDto(string itemId)
         {
             return new IngredientDto
@@ -247,6 +316,7 @@ namespace MinecraftGuessr.Controllers
         public int TotalPossibleCrafts { get; set; }
         public int CraftedCount { get; set; }
         public List<CraftedItemDto> History { get; set; } = new();
+        public List<IngredientDto> PossibleCrafts { get; set; } = new();
     }
 
     public class CraftRequestDto
@@ -261,5 +331,22 @@ namespace MinecraftGuessr.Controllers
         public bool IsNewDiscovery { get; set; }
         public string Message { get; set; } = string.Empty;
         public CraftedItemDto? CraftedItem { get; set; }
+    }
+
+    public class PastChallengeDto
+    {
+        public DateTime Date { get; set; }
+        public List<IngredientDto> Ingredients { get; set; } = new();
+        public int TotalPossibleCrafts { get; set; }
+        public int CraftedCount { get; set; }
+        public List<PastCraftDto> Crafts { get; set; } = new();
+    }
+
+    public class PastCraftDto
+    {
+        public string Id { get; set; } = string.Empty;
+        public string Name { get; set; } = string.Empty;
+        public string TextureUrl { get; set; } = string.Empty;
+        public bool Succeeded { get; set; }
     }
 }
