@@ -22,7 +22,7 @@ namespace MinecraftGuessr.Services
 
         public async Task<DailyChallenge> GetOrCreateDailyChallengeAsync(DateTime date)
         {
-            var targetDate = date.Date; // Normalize to midnight
+            var targetDate = DateTime.SpecifyKind(date.Date, DateTimeKind.Utc); // Normalize to midnight
             var challenge = await _dbContext.DailyChallenges.FirstOrDefaultAsync(c => c.Date == targetDate);
 
             if (challenge != null)

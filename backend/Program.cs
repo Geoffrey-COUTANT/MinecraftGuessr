@@ -69,18 +69,26 @@ app.UseCors();
 
 
 // Dev environment OpenAPI configuration (if package available)
-if (app.Environment.IsDevelopment())
+// DB migration and seeding automatically on startup
+using (var scope = app.Services.CreateScope())
 {
-    // DB migration automatically on startup in development
-    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     try
     {
         dbContext.Database.Migrate();
+        
+        // Seed code to make Radiou22 an admin if they exist
+        var radiouUser = dbContext.Users.FirstOrDefault(u => u.Username.ToLower() == "radiou22");
+        if (radiouUser != null && !radiouUser.IsAdmin)
+        {
+            radiouUser.IsAdmin = true;
+            dbContext.SaveChanges();
+            System.Console.WriteLine("Promoted Radiou22 to admin!");
+        }
     }
     catch (System.Exception ex)
     {
-        System.Console.WriteLine($"Error running migrations: {ex.Message}");
+        System.Console.WriteLine($"Error running migrations or seeding: {ex.Message}");
     }
 }
 

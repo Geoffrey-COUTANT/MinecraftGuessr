@@ -51,8 +51,20 @@ export default function App() {
   const [username, setUsername] = useState<string | null>(localStorage.getItem('username'));
   const [totalScore, setTotalScore] = useState<number>(parseInt(localStorage.getItem('totalScore') || '0', 10));
   const [isAdmin, setIsAdmin] = useState<boolean>(localStorage.getItem('isAdmin') === 'true');
-  const [activeTab, setActiveTab] = useState<'home' | 'play' | 'leaderboard' | 'profile'>('home');
+  const [activeTab, setActiveTab] = useState<'home' | 'play' | 'leaderboard' | 'profile' | 'admin'>('home');
   const [authView, setAuthView] = useState<'login' | 'register'>('login');
+
+  // Admin Panel States
+  const [adminSubTab, setAdminSubTab] = useState<'overview' | 'users' | 'challenge'>('overview');
+  const [adminStats, setAdminStats] = useState<any>(null);
+  const [adminUsers, setAdminUsers] = useState<any[]>([]);
+  const [adminIngredients, setAdminIngredients] = useState<any[]>([]);
+  const [challengeSearch, setChallengeSearch] = useState('');
+  const [chosenChallengeIngredients, setChosenChallengeIngredients] = useState<string[]>([]);
+  const [previewCrafts, setPreviewCrafts] = useState<any[]>([]);
+  const [challengeDate, setChallengeDate] = useState(new Date().toISOString().split('T')[0]);
+  const [editingUserScore, setEditingUserScore] = useState<number>(0);
+  const [scoreEditUser, setScoreEditUser] = useState<any | null>(null);
 
   // Register Form State
   const [regUsername, setRegUsername] = useState('');
@@ -196,6 +208,160 @@ export default function App() {
     }
   };
 
+  const fetchAdminStats = async () => {
+    if (!token || !isAdmin) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/stats`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminStats(data);
+      }
+    } catch (err) {
+      showToast('Error fetching admin stats.', 'error');
+    }
+  };
+
+  const fetchAdminUsers = async () => {
+    if (!token || !isAdmin) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminUsers(data);
+      }
+    } catch (err) {
+      showToast('Error loading user list.', 'error');
+    }
+  };
+
+  const fetchAdminIngredients = async () => {
+    if (!token || !isAdmin) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/ingredients`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setAdminIngredients(data);
+      }
+    } catch (err) {
+      showToast('Error loading ingredients.', 'error');
+    }
+  };
+
+  const handleUpdateScore = async (userId: number, score: number) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/score`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ score })
+      });
+      if (res.ok) {
+        showToast('Score updated successfully.', 'success');
+        fetchAdminUsers();
+      } else {
+        showToast('Failed to update score.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handleToggleAdmin = async (userId: number, currentAdminStatus: boolean) => {
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}/admin`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ isAdmin: !currentAdminStatus })
+      });
+      if (res.ok) {
+        showToast('Admin status toggled.', 'success');
+        fetchAdminUsers();
+      } else {
+        showToast('Failed to toggle admin status.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const handleDeleteUser = async (userId: number) => {
+    if (!confirm('Are you sure you want to delete this user? This cannot be undone.')) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/users/${userId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      if (res.ok) {
+        showToast('User deleted successfully.', 'success');
+        fetchAdminUsers();
+      } else {
+        showToast('Failed to delete user.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
+  const fetchChallengePreview = async (ingredients: string[]) => {
+    if (ingredients.length !== 4) return;
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/preview-challenge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ ingredients })
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPreviewCrafts(data);
+      }
+    } catch (err) {
+      showToast('Error generating preview.', 'error');
+    }
+  };
+
+  const handleSetupChallenge = async () => {
+    if (chosenChallengeIngredients.length !== 4) {
+      showToast('You must select exactly 4 ingredients.', 'error');
+      return;
+    }
+    try {
+      const res = await fetch(`${API_BASE}/api/admin/setup-challenge`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          ingredients: chosenChallengeIngredients,
+          date: challengeDate
+        })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showToast(`Challenge successfully set! ${data.possibleCraftsCount} possible recipes.`, 'success');
+        fetchAdminStats();
+      } else {
+        showToast(data.message || 'Failed to setup challenge.', 'error');
+      }
+    } catch (err) {
+      showToast('Network error.', 'error');
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchDailyChallenge();
@@ -210,6 +376,27 @@ export default function App() {
       fetchGameHistory();
     }
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'admin') {
+      if (adminSubTab === 'overview') {
+        fetchAdminStats();
+      } else if (adminSubTab === 'users') {
+        fetchAdminUsers();
+      } else if (adminSubTab === 'challenge') {
+        fetchAdminIngredients();
+        fetchAdminStats();
+      }
+    }
+  }, [activeTab, adminSubTab]);
+
+  useEffect(() => {
+    if (chosenChallengeIngredients.length === 4) {
+      fetchChallengePreview(chosenChallengeIngredients);
+    } else {
+      setPreviewCrafts([]);
+    }
+  }, [chosenChallengeIngredients]);
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -450,6 +637,16 @@ export default function App() {
             </div>
             
             <div className="header-nav">
+              {isAdmin && (
+                <button 
+                  onClick={() => setActiveTab('admin')} 
+                  className={`mc-button ${activeTab === 'admin' ? 'text-gold' : ''}`}
+                  style={{ fontSize: '20px', padding: '6px 15px', marginRight: '15px' }}
+                >
+                  Admin Panel
+                </button>
+              )}
+
               <div 
                 className="user-badge text-gold header-score-badge"
                 onClick={() => setActiveTab('profile')}
@@ -931,6 +1128,332 @@ export default function App() {
                 </div>
               </div>
             )}
+
+            {/* ADMIN VIEW */}
+            {activeTab === 'admin' && isAdmin && (
+              <div className="admin-container" style={{ maxWidth: '1000px', margin: '40px auto', padding: '0 20px', width: '100%', display: 'flex', flexDirection: 'column', gap: '30px' }}>
+                <div className="mc-panel dark">
+                  <h1 className="text-gold" style={{ fontSize: '38px', textShadow: '2px 2px 0px #000', margin: '0 0 20px 0', borderBottom: '3px solid #5a5a5a', paddingBottom: '10px' }}>
+                    MinecraftGuessr Admin Panel
+                  </h1>
+
+                  {/* Subtabs Menu */}
+                  <div className="admin-subtabs" style={{ display: 'flex', gap: '10px', marginBottom: '25px' }}>
+                    <button 
+                      onClick={() => setAdminSubTab('overview')} 
+                      className={`mc-button ${adminSubTab === 'overview' ? 'text-gold' : ''}`}
+                      style={{ fontSize: '18px', padding: '6px 15px' }}
+                    >
+                      Overview
+                    </button>
+                    <button 
+                      onClick={() => setAdminSubTab('users')} 
+                      className={`mc-button ${adminSubTab === 'users' ? 'text-gold' : ''}`}
+                      style={{ fontSize: '18px', padding: '6px 15px' }}
+                    >
+                      Users
+                    </button>
+                    <button 
+                      onClick={() => setAdminSubTab('challenge')} 
+                      className={`mc-button ${adminSubTab === 'challenge' ? 'text-gold' : ''}`}
+                      style={{ fontSize: '18px', padding: '6px 15px' }}
+                    >
+                      Challenge Configurator
+                    </button>
+                  </div>
+
+                  {/* Subtab 1: Overview */}
+                  {adminSubTab === 'overview' && adminStats && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <h2 className="text-gold" style={{ fontSize: '26px', margin: 0 }}>System Overview</h2>
+                      <div className="admin-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '20px' }}>
+                        <div className="mc-panel" style={{ background: 'rgba(50,50,50,0.5)', padding: '20px', border: '2px solid #5a5a5a' }}>
+                          <h3 style={{ fontSize: '18px', color: '#aaa', margin: '0 0 5px 0' }}>Total Players</h3>
+                          <p style={{ fontSize: '28px', margin: 0, fontWeight: 'bold' }} className="text-white">{adminStats.totalUsers}</p>
+                        </div>
+                        <div className="mc-panel" style={{ background: 'rgba(50,50,50,0.5)', padding: '20px', border: '2px solid #5a5a5a' }}>
+                          <h3 style={{ fontSize: '18px', color: '#aaa', margin: '0 0 5px 0' }}>Total Crafts Today</h3>
+                          <p style={{ fontSize: '28px', margin: 0, fontWeight: 'bold' }} className="text-white">{adminStats.totalCraftsToday}</p>
+                        </div>
+                        <div className="mc-panel" style={{ background: 'rgba(50,50,50,0.5)', padding: '20px', border: '2px solid #5a5a5a' }}>
+                          <h3 style={{ fontSize: '18px', color: '#aaa', margin: '0 0 5px 0' }}>Discovered Items Today</h3>
+                          <p style={{ fontSize: '28px', margin: 0, fontWeight: 'bold' }} className="text-white">{adminStats.uniqueCraftedItemsToday}</p>
+                        </div>
+                      </div>
+
+                      <div className="mc-panel" style={{ background: 'rgba(30,30,30,0.5)', border: '2px solid #5a5a5a', padding: '20px', marginTop: '10px' }}>
+                        <h3 className="text-gold" style={{ fontSize: '20px', margin: '0 0 12px 0' }}>Today's Active Challenge</h3>
+                        {adminStats.hasActiveChallengeToday ? (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <span style={{ color: '#2c2c2c', background: '#55ff55', padding: '4px 10px', fontWeight: 'bold', fontSize: '16px', border: '1px solid #000' }}>ACTIVE</span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              {adminStats.todayChallengeIngredients?.map((ing: any, idx: number) => (
+                                <div key={idx} className="history-dock-slot" title={ing.name} style={{ background: '#8b8b8b' }}>
+                                  <img src={getTextureUrl(ing.textureUrl)} alt={ing.name} style={{ width: '32px', height: '32px', objectFit: 'contain' }} />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                            <span style={{ color: '#fff', background: '#ff5555', padding: '4px 10px', fontWeight: 'bold', fontSize: '16px', border: '1px solid #000' }}>MISSING</span>
+                            <span style={{ color: '#aaa' }}>No custom challenge set. The game is running on auto-generation.</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Subtab 2: Users Management */}
+                  {adminSubTab === 'users' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <h2 className="text-gold" style={{ fontSize: '26px', margin: 0 }}>Registered Users</h2>
+                      <div style={{ overflowX: 'auto' }}>
+                        <table className="leaderboard-table" style={{ width: '100%' }}>
+                          <thead>
+                            <tr>
+                              <th style={{ padding: '10px' }}>User ID</th>
+                              <th style={{ padding: '10px' }}>Username</th>
+                              <th style={{ padding: '10px' }}>Total Score</th>
+                              <th style={{ padding: '10px', textAlign: 'center' }}>Role</th>
+                              <th style={{ padding: '10px', textAlign: 'right' }}>Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {adminUsers.map((userItem: any) => (
+                              <tr key={userItem.id} style={{ borderBottom: '1px solid #333' }}>
+                                <td style={{ padding: '10px', color: '#aaa' }}>{userItem.id}</td>
+                                <td style={{ padding: '10px', fontWeight: 'bold' }} className={userItem.isAdmin ? 'text-gold' : 'text-white'}>
+                                  {userItem.username}
+                                </td>
+                                <td style={{ padding: '10px' }}>
+                                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    <span className="text-gold" style={{ fontWeight: 'bold' }}>{userItem.totalScore} pts</span>
+                                    <span 
+                                      onClick={() => {
+                                        setScoreEditUser(userItem);
+                                        setEditingUserScore(userItem.totalScore);
+                                      }}
+                                      style={{ color: '#aaa', textDecoration: 'underline', cursor: 'pointer', fontSize: '15px' }}
+                                    >
+                                      Edit
+                                    </span>
+                                  </div>
+                                </td>
+                                <td style={{ padding: '10px', textAlign: 'center' }}>
+                                  <select
+                                    value={userItem.isAdmin ? 'admin' : 'player'}
+                                    onChange={(e) => {
+                                      const newRole = e.target.value;
+                                      const confirmChange = confirm(`Are you sure you want to change this user's role to ${newRole.toUpperCase()}?`);
+                                      if (confirmChange) {
+                                        handleToggleAdmin(userItem.id, userItem.isAdmin);
+                                      }
+                                    }}
+                                    className="mc-select"
+                                    style={{
+                                      background: '#2c2c2c',
+                                      color: userItem.isAdmin ? '#ffd700' : '#fff',
+                                      border: '2px solid #5a5a5a',
+                                      padding: '4px 8px',
+                                      fontFamily: "'Minecraft', sans-serif",
+                                      fontSize: '14px',
+                                      cursor: 'pointer'
+                                    }}
+                                    disabled={userItem.username.toLowerCase() === 'radiou22'}
+                                  >
+                                    <option value="player" style={{ color: '#fff' }}>Player</option>
+                                    <option value="admin" style={{ color: '#ffd700' }}>Admin</option>
+                                  </select>
+                                </td>
+                                <td style={{ padding: '10px', textAlign: 'right' }}>
+                                  <button 
+                                    onClick={() => handleDeleteUser(userItem.id)}
+                                    className="mc-button text-red"
+                                    style={{ fontSize: '14px', padding: '4px 10px' }}
+                                    disabled={userItem.username.toLowerCase() === 'radiou22' || userItem.username === username}
+                                  >
+                                    Delete
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Subtab 3: Daily Challenge Creator */}
+                  {adminSubTab === 'challenge' && (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                        <div>
+                          <h2 className="text-gold" style={{ fontSize: '26px', margin: '0 0 5px 0' }}>Daily Challenge Configurator</h2>
+                          <p style={{ color: '#aaa', fontSize: '16px' }}>Configure custom 4 ingredients for a specific date.</p>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px', alignItems: 'flex-end' }}>
+                          <label htmlFor="challenge-date" style={{ color: '#aaa', fontSize: '16px' }}>Target Date:</label>
+                          <input 
+                            type="date" 
+                            id="challenge-date"
+                            value={challengeDate} 
+                            onChange={(e) => setChallengeDate(e.target.value)} 
+                            className="mc-input"
+                            style={{ padding: '6px', fontSize: '18px' }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Selected Dock */}
+                      <div className="mc-panel" style={{ background: 'rgba(30,30,30,0.5)', border: '2px solid #5a5a5a', padding: '20px' }}>
+                        <h3 className="text-gold" style={{ fontSize: '20px', margin: '0 0 15px 0' }}>
+                          Selected Ingredients ({chosenChallengeIngredients.length} / 4)
+                        </h3>
+                        <div style={{ display: 'flex', gap: '15px', alignItems: 'center' }}>
+                          <div style={{ display: 'flex', gap: '10px' }}>
+                            {[0, 1, 2, 3].map((idx) => {
+                              const ingId = chosenChallengeIngredients[idx];
+                              const ingDetail = ingId ? adminIngredients.find(i => i.id === ingId) : null;
+                              return (
+                                <div 
+                                  key={idx} 
+                                  className="dock-slot" 
+                                  onClick={() => {
+                                    if (ingId) {
+                                      setChosenChallengeIngredients(chosenChallengeIngredients.filter(id => id !== ingId));
+                                    }
+                                  }}
+                                  style={{ cursor: 'pointer' }}
+                                  title={ingDetail ? `${ingDetail.name} (Click to remove)` : 'Empty slot'}
+                                >
+                                  {ingDetail ? (
+                                    <img src={getTextureUrl(ingDetail.textureUrl)} alt={ingDetail.name} />
+                                  ) : (
+                                    <span style={{ color: '#555', fontSize: '26px' }}>?</span>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginLeft: '20px' }}>
+                            <button 
+                              onClick={handleSetupChallenge}
+                              className={`mc-button ${chosenChallengeIngredients.length === 4 ? 'text-gold' : 'disabled'}`}
+                              disabled={chosenChallengeIngredients.length !== 4}
+                              style={{ fontSize: '18px', padding: '8px 20px' }}
+                            >
+                              SET AS DAILY CHALLENGE
+                            </button>
+                            <button 
+                              onClick={() => setChosenChallengeIngredients([])}
+                              className="mc-button text-red"
+                              style={{ fontSize: '16px', padding: '4px 15px' }}
+                            >
+                              Clear Selection
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Split Panel: Search & Select List vs Recipes Preview */}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '30px' }}>
+                        {/* Selector Section */}
+                        <div>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+                            <label htmlFor="search-ing" style={{ color: '#aaa', fontSize: '16px' }}>Search Ingredients:</label>
+                            <input 
+                              type="text" 
+                              id="search-ing"
+                              value={challengeSearch} 
+                              onChange={(e) => setChallengeSearch(e.target.value)} 
+                              placeholder="Type to filter..." 
+                              className="mc-input"
+                              style={{ padding: '8px', fontSize: '18px' }}
+                            />
+                          </div>
+
+                          <div style={{ maxHeight: '350px', overflowY: 'auto', border: '2px solid #5a5a5a', background: 'rgba(0,0,0,0.3)', padding: '10px', display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            {adminIngredients
+                              .filter(i => i.name.toLowerCase().includes(challengeSearch.toLowerCase()))
+                              .map((ing) => {
+                                const isSelected = chosenChallengeIngredients.includes(ing.id);
+                                return (
+                                  <div 
+                                    key={ing.id}
+                                    onClick={() => {
+                                      if (isSelected) {
+                                        setChosenChallengeIngredients(chosenChallengeIngredients.filter(id => id !== ing.id));
+                                      } else {
+                                        if (chosenChallengeIngredients.length < 4) {
+                                          setChosenChallengeIngredients([...chosenChallengeIngredients, ing.id]);
+                                        } else {
+                                          showToast('Already chosen 4 ingredients. Click one in the dock to remove it.', 'info');
+                                        }
+                                      }
+                                    }}
+                                    style={{ 
+                                      display: 'flex', 
+                                      alignItems: 'center', 
+                                      justifyContent: 'space-between',
+                                      padding: '8px', 
+                                      background: isSelected ? 'rgba(85,255,85,0.1)' : 'transparent',
+                                      border: isSelected ? '1px solid #55ff55' : '1px solid transparent',
+                                      cursor: 'pointer'
+                                    }}
+                                    className="ingredient-select-row"
+                                  >
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                      <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <img src={getTextureUrl(ing.textureUrl)} alt={ing.name} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                                      </div>
+                                      <span style={{ fontSize: '18px' }} className={isSelected ? 'text-green' : 'text-white'}>{ing.name}</span>
+                                    </div>
+                                    {isSelected && <span className="text-green" style={{ fontSize: '16px', fontWeight: 'bold' }}>SELECTED</span>}
+                                  </div>
+                                );
+                              })}
+                          </div>
+                        </div>
+
+                        {/* Preview Section */}
+                        <div className="mc-panel" style={{ background: 'rgba(30,30,30,0.5)', border: '2px solid #5a5a5a', padding: '20px', display: 'flex', flexDirection: 'column' }}>
+                          <h3 className="text-gold" style={{ fontSize: '20px', margin: '0 0 10px 0', borderBottom: '2px solid #5a5a5a', paddingBottom: '8px' }}>
+                            Discoveries Preview ({previewCrafts.length})
+                          </h3>
+                          <div style={{ overflowY: 'auto', flexGrow: 1, maxHeight: '350px' }}>
+                            {chosenChallengeIngredients.length === 4 ? (
+                              previewCrafts.length > 0 ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                                  {previewCrafts.map((craft) => (
+                                    <div key={craft.id} style={{ display: 'flex', alignItems: 'center', gap: '10px', background: 'rgba(0,0,0,0.2)', padding: '6px' }}>
+                                      <div style={{ width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                        <img src={getTextureUrl(craft.textureUrl)} alt={craft.name} style={{ width: '28px', height: '28px', objectFit: 'contain' }} />
+                                      </div>
+                                      <span style={{ fontSize: '18px' }} className="text-white">{craft.name}</span>
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <div style={{ color: '#ff5555', textAlign: 'center', marginTop: '40px', fontSize: '18px' }}>
+                                  ⚠️ No items can be crafted with this set of ingredients. Set a different combination.
+                                </div>
+                              )
+                            ) : (
+                              <div style={{ color: '#888', textAlign: 'center', marginTop: '40px', fontSize: '18px' }}>
+                                Select exactly 4 ingredients to preview the recipes generated.
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </main>
         </>
       ) : (
@@ -1066,6 +1589,53 @@ export default function App() {
                     </div>
                   );
                 })}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Points Modal */}
+      {scoreEditUser && (
+        <div className="mc-modal-overlay" onClick={() => setScoreEditUser(null)}>
+          <div className="mc-modal-content mc-panel dark" style={{ maxWidth: '400px', padding: '25px' }} onClick={(e) => e.stopPropagation()}>
+            <div className="mc-modal-header" style={{ marginBottom: '20px' }}>
+              <h2 className="text-gold" style={{ fontSize: '26px', margin: 0 }}>Edit User Score</h2>
+              <button className="mc-modal-close" onClick={() => setScoreEditUser(null)}>×</button>
+            </div>
+            <div className="mc-modal-body" style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+              <p style={{ fontSize: '18px', margin: 0 }}>
+                User: <strong className="text-white">{scoreEditUser.username}</strong>
+              </p>
+              <div className="form-group" style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                <label htmlFor="modal-score" style={{ color: '#aaa', fontSize: '16px' }}>Total Points:</label>
+                <input
+                  type="number"
+                  id="modal-score"
+                  value={editingUserScore}
+                  onChange={(e) => setEditingUserScore(parseInt(e.target.value) || 0)}
+                  className="mc-input"
+                  style={{ padding: '8px', fontSize: '18px' }}
+                />
+              </div>
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button
+                  onClick={() => {
+                    handleUpdateScore(scoreEditUser.id, editingUserScore);
+                    setScoreEditUser(null);
+                  }}
+                  className="mc-button text-gold"
+                  style={{ flexGrow: 1, padding: '6px 15px', fontSize: '18px' }}
+                >
+                  SAVE POINTS
+                </button>
+                <button
+                  onClick={() => setScoreEditUser(null)}
+                  className="mc-button text-red"
+                  style={{ padding: '6px 15px', fontSize: '18px' }}
+                >
+                  Cancel
+                </button>
               </div>
             </div>
           </div>

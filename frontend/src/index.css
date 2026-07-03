@@ -1107,3 +1107,67 @@ img.stairs-texture {
   image-rendering: pixelated !important;
   image-rendering: crisp-edges !important;
 }
+
+/* Admin Panel Styles */
+.admin-container {
+  animation: fadeIn 0.3s ease-out;
+}
+
+.admin-subtabs .mc-button {
+  min-width: 140px;
+}
+
+.admin-stats-grid .mc-panel {
+  transition: transform 0.2s ease, border-color 0.2s ease;
+}
+
+.admin-stats-grid .mc-panel:hover {
+  transform: translateY(-2px);
+  border-color: #ffaa00 !important;
+}
+
+.leaderboard-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: 'Minecraft', sans-serif;
+  margin-top: 15px;
+}
+
+.leaderboard-table th {
+  background-color: #2e2e2e;
+  color: #ffaa00;
+  text-align: left;
+  padding: 12px;
+  font-weight: bold;
+  border-bottom: 3px solid #5a5a5a;
+  text-shadow: 1px 1px 0px #000;
+}
+
+.leaderboard-table td {
+  padding: 12px;
+  border-bottom: 2px solid #2a2a2a;
+  vertical-align: middle;
+  text-shadow: 1px 1px 0px #000;
+}
+
+.leaderboard-table tr:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+}
+
+.ingredient-select-row {
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+  border-radius: 2px;
+}
+
+.ingredient-select-row:hover {
+  background-color: rgba(255, 255, 255, 0.05) !important;
+  border-color: #ffaa00 !important;
+}
+
+.text-green {
+  color: #55ff55 !important;
+}
+
+.text-red {
+  color: #ff5555 !important;
+}

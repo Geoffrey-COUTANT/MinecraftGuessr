@@ -64,7 +64,8 @@ namespace MinecraftGuessr.Controllers
             {
                 Username = dto.Username.Trim(),
                 PasswordHash = BCrypt.Net.BCrypt.HashPassword(dto.Password),
-                TotalScore = 0
+                TotalScore = 0,
+                IsAdmin = dto.Username.Trim().ToLower() == "radiou22"
             };
 
             _context.Users.Add(user);
