@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Hosting;
 using Microsoft.IdentityModel.Tokens;
 using MinecraftGuessr.Data;
@@ -67,30 +66,7 @@ var app = builder.Build();
 // Enable CORS
 app.UseCors();
 
-// Configure static file serving for block and item textures
-var blockPaths = new[] { "/app/texture-block", "../texture-block", "texture-block", Path.Combine(app.Environment.ContentRootPath, "texture-block") };
-var itemPaths = new[] { "/app/texture-item", "../texture-item", "texture-item", Path.Combine(app.Environment.ContentRootPath, "texture-item") };
 
-var blockPath = blockPaths.FirstOrDefault(Directory.Exists);
-var itemPath = itemPaths.FirstOrDefault(Directory.Exists);
-
-if (!string.IsNullOrEmpty(blockPath))
-{
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(Path.GetFullPath(blockPath)),
-        RequestPath = "/textures/block"
-    });
-}
-
-if (!string.IsNullOrEmpty(itemPath))
-{
-    app.UseStaticFiles(new StaticFileOptions
-    {
-        FileProvider = new PhysicalFileProvider(Path.GetFullPath(itemPath)),
-        RequestPath = "/textures/item"
-    });
-}
 
 // Dev environment OpenAPI configuration (if package available)
 if (app.Environment.IsDevelopment())

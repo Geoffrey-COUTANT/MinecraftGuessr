@@ -4,6 +4,8 @@ using System.IO;
 using System.Linq;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
 
 namespace MinecraftGuessr.Services
 {
@@ -29,13 +31,17 @@ namespace MinecraftGuessr.Services
         private readonly List<Recipe> _recipes = new();
         private readonly ILogger<RecipeService> _logger;
         private readonly HashSet<string> _allBaseIngredients = new();
-        private readonly Dictionary<string, string> _itemTexturePaths = new();
+        private readonly Dictionary<string, string> _texturesMap = new(StringComparer.OrdinalIgnoreCase);
+        private readonly string _cdnBaseUrl;
 
-        public RecipeService(ILogger<RecipeService> logger)
+        public RecipeService(ILogger<RecipeService> logger, IHostEnvironment env, IConfiguration config)
         {
             _logger = logger;
-            LoadRecipes();
-            LoadTextures();
+            _cdnBaseUrl = config["AssetSettings:CdnBaseUrl"]?.TrimEnd('/')
+                ?? "https://cdn.jsdelivr.net/gh/Geoffrey-COUTANT/MinecraftGuessr-Assets@main";
+
+            LoadRecipes(env.ContentRootPath);
+            LoadTextures(env.ContentRootPath);
         }
 
         public List<Recipe> GetAllRecipes() => _recipes;
@@ -44,101 +50,81 @@ namespace MinecraftGuessr.Services
 
         public string GetTextureUrl(string itemId)
         {
-            if (_itemTexturePaths.TryGetValue(itemId, out var url))
-            {
-                return url;
-            }
-            // Fallbacks based on suffixes
-            var item = itemId.Replace("minecraft:", "").ToLowerInvariant();
-            if (item.EndsWith("_planks") || item.EndsWith("_wood") || item.EndsWith("_log"))
-                return "/textures/block/oak_planks.png";
-            return "/textures/item/barrier.png";
-        }
-
-        private void LoadTextures()
-        {
-            string[] blockPaths = { "/app/texture-block", "../texture-block", "texture-block", Path.Combine(AppContext.BaseDirectory, "texture-block") };
-            string[] itemPaths = { "/app/texture-item", "../texture-item", "texture-item", Path.Combine(AppContext.BaseDirectory, "texture-item") };
-
-            string blockPath = blockPaths.FirstOrDefault(Directory.Exists) ?? string.Empty;
-            string itemPath = itemPaths.FirstOrDefault(Directory.Exists) ?? string.Empty;
-
-            if (!string.IsNullOrEmpty(itemPath))
-            {
-                _logger.LogInformation($"Loading item textures from: {Path.GetFullPath(itemPath)}");
-                foreach (var file in Directory.GetFiles(itemPath, "*.png"))
-                {
-                    var name = Path.GetFileNameWithoutExtension(file);
-                    _itemTexturePaths["minecraft:" + name] = $"/textures/item/{name}.png";
-                }
-            }
-
-            if (!string.IsNullOrEmpty(blockPath))
-            {
-                _logger.LogInformation($"Loading block textures from: {Path.GetFullPath(blockPath)}");
-                foreach (var file in Directory.GetFiles(blockPath, "*.png"))
-                {
-                    var name = Path.GetFileNameWithoutExtension(file);
-                    if (!_itemTexturePaths.ContainsKey("minecraft:" + name))
-                    {
-                        _itemTexturePaths["minecraft:" + name] = $"/textures/block/{name}.png";
-                    }
-                }
-            }
+            var name = itemId.Replace("minecraft:", "").ToLowerInvariant();
 
             // Special cases
-            _itemTexturePaths["minecraft:compass"] = "/textures/item/compass_00.png";
-            _itemTexturePaths["minecraft:clock"] = "/textures/item/clock_00.png";
-            _itemTexturePaths["minecraft:recovery_compass"] = "/textures/item/recovery_compass_00.png";
-            
-            _logger.LogInformation($"Successfully loaded {_itemTexturePaths.Count} item texture mappings.");
-        }
+            if (name == "compass") name = "compass_00";
+            else if (name == "clock") name = "clock_00";
+            else if (name == "recovery_compass") name = "recovery_compass_00";
 
-        private void LoadRecipes()
-        {
-            // Search paths for recipe directory
-            string[] searchPaths = {
-                "/app/recipe",
-                "../recipe",
-                "recipe",
-                Path.Combine(AppContext.BaseDirectory, "recipe")
-            };
-
-            string recipePath = string.Empty;
-            foreach (var path in searchPaths)
+            if (_texturesMap.TryGetValue(name, out var folderType))
             {
-                if (Directory.Exists(path))
-                {
-                    recipePath = path;
-                    break;
-                }
+                return $"{_cdnBaseUrl}/texture-{folderType}/{name}.png";
             }
 
-            if (string.IsNullOrEmpty(recipePath))
+            // Fallbacks based on suffixes
+            if (name.EndsWith("_planks") || name.EndsWith("_wood") || name.EndsWith("_log"))
+                return $"{_cdnBaseUrl}/texture-block/oak_planks.png";
+
+            return $"{_cdnBaseUrl}/texture-item/barrier.png";
+        }
+
+        private void LoadTextures(string contentRoot)
+        {
+            var filePath = Path.Combine(contentRoot, "textures_map.json");
+            if (!File.Exists(filePath))
             {
-                _logger.LogError("Recipe directory not found in any search path.");
+                _logger.LogError($"Textures map file not found at: {filePath}");
                 return;
             }
 
-            _logger.LogInformation($"Loading recipes from: {Path.GetFullPath(recipePath)}");
+            _logger.LogInformation($"Loading textures map from: {filePath}");
 
             try
             {
-                var files = Directory.GetFiles(recipePath, "*.json");
-                int loadedCount = 0;
+                var content = File.ReadAllText(filePath);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var map = JsonSerializer.Deserialize<Dictionary<string, string>>(content, options);
 
-                foreach (var file in files)
+                if (map != null)
                 {
-                    try
+                    foreach (var kvp in map)
                     {
-                        var content = File.ReadAllText(file);
-                        var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                        var recipe = JsonSerializer.Deserialize<Recipe>(content, options);
+                        _texturesMap[kvp.Key] = kvp.Value;
+                    }
+                    _logger.LogInformation($"Successfully loaded {_texturesMap.Count} texture mappings.");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError($"Error reading textures map file: {ex.Message}");
+            }
+        }
 
+        private void LoadRecipes(string contentRoot)
+        {
+            var filePath = Path.Combine(contentRoot, "recipes.json");
+            if (!File.Exists(filePath))
+            {
+                _logger.LogError($"Recipes file not found at: {filePath}");
+                return;
+            }
+
+            _logger.LogInformation($"Loading recipes from: {filePath}");
+
+            try
+            {
+                var content = File.ReadAllText(filePath);
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var recipesList = JsonSerializer.Deserialize<List<Recipe>>(content, options);
+
+                if (recipesList != null)
+                {
+                    int loadedCount = 0;
+                    foreach (var recipe in recipesList)
+                    {
                         if (recipe != null && (recipe.Type == "minecraft:crafting_shaped" || recipe.Type == "minecraft:crafting_shapeless"))
                         {
-                            recipe.Id = Path.GetFileNameWithoutExtension(file);
-                            
                             // Normalize recipe result ID to always include minecraft:
                             if (!recipe.Result.Id.StartsWith("minecraft:"))
                             {
@@ -150,17 +136,12 @@ namespace MinecraftGuessr.Services
                             loadedCount++;
                         }
                     }
-                    catch (Exception ex)
-                    {
-                        _logger.LogWarning($"Failed to load recipe file {Path.GetFileName(file)}: {ex.Message}");
-                    }
+                    _logger.LogInformation($"Successfully loaded {loadedCount} crafting recipes. Total unique base ingredients: {_allBaseIngredients.Count}");
                 }
-
-                _logger.LogInformation($"Successfully loaded {loadedCount} crafting recipes. Total unique base ingredients: {_allBaseIngredients.Count}");
             }
             catch (Exception ex)
             {
-                _logger.LogError($"Error reading recipe files: {ex.Message}");
+                _logger.LogError($"Error reading recipes file: {ex.Message}");
             }
         }
 
